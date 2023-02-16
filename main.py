@@ -118,9 +118,9 @@ def user_req(message,dict,arg):
 
 def user_finish(message,comand):
     if message.text == "Да":
-        # returned_output = subprocess.check_output("cd" + path + "&" + comand)
-        # client.send_message(message.chat.id, returned_output.decode("utf-8"))
-        client.send_message(message.chat.id, "cd " + path + " & " + comand)
+        returned_output = subprocess.check_output("cd" + path + "&" + comand)
+        client.send_message(message.chat.id, returned_output.decode("utf-8"))
+        # client.send_message(message.chat.id, "cd " + path + " & " + comand)
     else:
         client.send_message(message.chat.id,"Отменяю")
 
