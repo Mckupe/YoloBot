@@ -1,17 +1,24 @@
 import json
+from pydantic import BaseSettings
 import telebot
-import config
 import os
 import subprocess
 from telebot import types
 import signal, pickle, sys
 
+class Settings(BaseSettings):
+    TOKEN:str
+    PATHS:str
+    class Config:
+        env_file = '.env'
 
-client = telebot.TeleBot(config.TOKEN)
+settings = Settings(_env_file='.env', _env_file_encoding='utf-8')
 
-sas = "python train.py data coco.yaml epochs 300 weights '' cfg yolov5n.yaml  batch-size 128"
+comand = "python train.py data"
 
-path = "D:\Работа\yolo\yolov5"
+client = telebot.TeleBot(settings.TOKEN)
+
+path = settings.PATHS
 
 content = os.listdir(path + "\data")
 
@@ -61,8 +68,6 @@ if os.path.exists('settings.pkl'):
 else:
     remember = {}
 
-comand = "python train.py data"
-
 @client.message_handler(commands=["start"])
 def application(message):
     rmk = types.ReplyKeyboardMarkup(one_time_keyboard=True,resize_keyboard=True)
@@ -75,13 +80,6 @@ def user_answer(message,dict):
     if (message.text == "weights" or message.text == "cfg" or message.text == "data" or message.text == "hyp" or message.text == "epochs" or message.text == "batch-size" or message.text == "img" or message.text == "rect" or message.text == "resume" or message.text == "nosave" or message.text == "noval" or message.text == "noautoanchor" or message.text == "noplots" or message.text == "evolve" or message.text == "bucket" or message.text == "cache" or message.text == "image-weights" or message.text == "device" or message.text == "multi-scale" or message.text == "single-cls" or message.text == "optimizer" or message.text == "sync-bn" or message.text == "workers" or message.text == "project" or message.text == "name" or message.text == "exist-ok" or message.text == "quad" or message.text == "cos-lr" or message.text == "label-smoothing" or message.text == "patience" or message.text == "freeze" or message.text == "save-period" or message.text == "seed" or message.text == "local_rank" or message.text == "entity" or message.text == "upload_dataset" or message.text == "bbox_interval" or message.text == "artifact_alias"):
         rmk = types.ReplyKeyboardMarkup(resize_keyboard=True)
         global remember
-        # lastArg = remember[message.text]
-        # if (len(lastArg) > 6):
-        #     x = min(lastArg, key=lastArg.get)
-        #     del remember[message.text][x]
-        # if (lastArg):
-        #     for key in lastArg:
-        #         rmk.add(types.KeyboardButton(key))
         if message.text in remember:
             print(remember)
             if (len(remember[message.text]) > 6):
@@ -118,9 +116,10 @@ def user_req(message,dict,arg):
 
 def user_finish(message,comand):
     if message.text == "Да":
-        # returned_output = subprocess.check_output("cd" + path + "&" + comand)
+        os.chdir(path)
+        returned_output = subprocess.check_output(comand)
         # client.send_message(message.chat.id, returned_output.decode("utf-8"))
-        client.send_message(message.chat.id, "cd " + path + " & " + comand)
+        client.send_message(message.chat.id,"В процессе...")
     else:
         client.send_message(message.chat.id,"Отменяю")
 
