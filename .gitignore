@@ -1,5 +1,8 @@
 #cashe
-/__pycashe__
+__pycashe__
+
+#saves
+.handler-saves
 
 #misc
 .env
