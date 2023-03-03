@@ -1,66 +1,21 @@
+from datetime import datetime
 import json
-from pydantic import BaseSettings
+import time
 import telebot
 import os
 import subprocess
 from telebot import types
 import signal, pickle, sys
-
-class Settings(BaseSettings):
-    TOKEN:str
-    PATHS:str
-    class Config:
-        env_file = '.env'
+from config import Settings
+from datahelp import help
+from clearml import Task, Logger
 
 settings = Settings(_env_file='.env', _env_file_encoding='utf-8')
-
-comand = "python train.py data"
 
 client = telebot.TeleBot(settings.TOKEN)
 
 path = settings.PATHS
 
-content = os.listdir(path + "\data")
-
-help = {"weights": "WEIGHTS initial weights path",
-  "cfg" :"CFG model.yaml path",
-  "data": "DATA dataset.yaml path",
-  "hyp": "HYP hyperparameters path",
-  "epochs": "EPOCHS total training epochs",
-  "batch-size": "BATCH_SIZE total batch size for all GPUs, -1 for autobatch",
-  "img":"IMGSZ train, val image size (pixels)",
-  "rect": "rectangular training",
-  "resume": "[RESUME] resume most recent training",
-  "nosave": "only save final checkpoint",
-  "noval": "only validate final epoch",
-  "noautoanchor": "disable AutoAnchor",
-  "noplots": "save no plot files",
-  "evolve": "[EVOLVE] evolve hyperparameters for x generations",
-  "bucket": "BUCKET gsutil bucket",
-  "cache": "[CACHE] image cache ram/disk",
-  "image-weights": "use weighted image selection for training",
-  "device DEVICE": "cuda device, i.e. 0 or 0,1,2,3 or cpu",
-  "multi-scale": "vary img-size +/- 50%",
-  "single-cls": "train multi-class data as single-class",
-  "optimizer": "{SGD,Adam,AdamW} optimizer",
-  "sync-bn": "use SyncBatchNorm, only available in DDP mode",
-  "workers": "WORKERS max dataloader workers (per RANK in DDP mode)",
-  "project": "PROJECT save to project/name",
-  "name": "NAME save to project/name",
-  "exist-ok": "existing project/name ok, do not increment",
-  "quad": "quad dataloader",
-  "cos-lr": "cosine LR scheduler",
-  "label-smoothing": "LABEL_SMOOTHING Label smoothing epsilon",
-  "patience": "PATIENCE EarlyStopping patience (epochs without improvement)",
-  "freeze": "FREEZE [FREEZE ...] Freeze layers: backbone=10, first3=0 1 2",
-  "save-period": "SAVE_PERIOD Save checkpoint every x epochs (disabled if < 1)",
-  "seed": "SEED Global training seed",
-  "local_rank": "LOCAL_RANK Automatic DDP Multi-GPU argument, do not modify",
-  "entity": "ENTITY Entity",
-  "upload_dataset": "[UPLOAD_DATASET] Upload data, val option",
-  "bbox_interval": "BBOX_INTERVAL Set bounding-box image logging interval",
-  "artifact_alias": "ARTIFACT_ALIAS Version of dataset artifact to use"
-  }
 
 if os.path.exists('settings.pkl'):
     with open('settings.pkl', 'rb') as f:
@@ -116,19 +71,71 @@ def user_req(message,dict,arg):
 
 def user_finish(message,comand):
     if message.text == "Да":
+        client.send_message(message.chat.id,"В процессе...") 
         os.chdir(path)
-        returned_output = subprocess.check_output(comand)
-        # client.send_message(message.chat.id, returned_output.decode("utf-8"))
-        client.send_message(message.chat.id,"В процессе...")
+        # task = Task.init(project_name = "TelegramBotYolov5",task_name = "testTask2" + datetime.now().strftime("%H:%M:%S"))
+        # time.sleep(10)
+        # returned_output = subprocess.check_output(comand)
+        p = subprocess.Popen(comand, 
+                             stdout=subprocess.PIPE, # перенаправление стандартного вывода
+                             stderr=subprocess.STDOUT, # и вывода ошибок
+                             )
+        # Логгируем сообщение об окончании обучения в ClearML
+        while True:
+            output = p.stdout.readline()
+            if output == '' and p.poll() is not None:
+                break
+            if output:
+                client.send_message(message.chat.id, output.strip())
+
+        Logger.current_logger().report_text('Обучение YOLOv5 завершено!')
+        # while p.poll() == None:
+        #     print(p.stdout.readline())
+        # p.wait()
+        # output = p.communicate()[0]      
+        
+        # print(output)
+        # p.terminate() 
+        # client.send_message(message.chat.id,"Готово")   
+        # send_message(message,output)
+        # task.set_completed() 
+        # task.close()
     else:
         client.send_message(message.chat.id,"Отменяю")
 
-def handler(**args):
+def send_message(message,text):
+    if len(text) >= 4096:
+        while i < len(text): 
+            if i+4094 < len(text): 
+                time.sleep(2)
+                client.send_message(message.chat.id,text[i:i+4094]) 
+            else: 
+                time.sleep(2)
+                client.send_message(message.chat.id,text[i:len(text)]) 
+                i += 4094
+    else: client.send_message(message.chat.id, text)
+
+def handler():
     with open('settings.pkl', 'wb') as f:
         pickle.dump(remember, f)
     sys.exit(0)
 
+
+def create_clearml_task():
+    # Генерируем уникальное имя задачи на основе текущей даты и времени
+    now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    task_name = f'YOLOv5 training ({now})'
+
+    # Создаем задачу на ClearML
+    task = Task.init(project_name="TelegramBotYolov5", task_name=task_name)
+
+    return task
+
+# Создаем первую задачу на ClearML
+task = create_clearml_task()
+
 signal.signal(signal.SIGTERM, handler)
-# client.enable_save_next_step_handlers(delay=2)
-# client.load_next_step_handlers()
+
+client.enable_save_next_step_handlers(delay=2)
+client.load_next_step_handlers()
 client.polling()
