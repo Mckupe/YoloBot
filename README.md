@@ -12,6 +12,6 @@
 
 В .env нужно вписать путь до дериктории yolo5 , а также токен вашего бота.
 
-Чтобы подключить ваш Clearml workspace, нужно создать new credentials передя по ссылке https://app.clear.ml/settings/workspace-configuration, скопировать api, в проводнике выполнить команду clearml-init и вставить api туда
+Чтобы подключить ваш Clearml workspace, нужно создать new credentials передя по ссылке https://app.clear.ml/settings/workspace-configuration, скопировать api, в проводнике выполнить команду "clearml-init" и вставить api туда
 
-Для загрузки всех пакетов через pip, можно использовать команду 
+Для загрузки всех пакетов через pip, можно использовать команду "pip install -r requirements.txt"
