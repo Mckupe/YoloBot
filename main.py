@@ -11,6 +11,7 @@ from clearml import Task, Logger
 
 client = telebot.TeleBot(settings.TOKEN)
 
+# Выгрузка прошлых аргументов
 if os.path.exists('settings.pkl'):
     with open('settings.pkl', 'rb') as f:
         remember = json.loads(pickle.load(f))
@@ -56,6 +57,7 @@ def user_req(message,dict,arg):
     if (message.text in remember[arg]):
         remember[arg][message.text] += 1
     else : remember[arg][message.text] = 1
+    # Сохранение прошлых аргументов
     with open('settings.pkl', 'wb') as f:
         pickle.dump(json.dumps(remember), f)
     print(dict)    
