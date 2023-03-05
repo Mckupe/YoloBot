@@ -6,3 +6,6 @@ __pycache__
 
 #misc
 .env
+
+#saves
+settings.pkl
